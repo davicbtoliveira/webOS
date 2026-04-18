@@ -1,0 +1,259 @@
+#!/bin/sh
+set -eu
+
+REPO=/var/repo
+PKG_ROOT=/tmp/packages
+PKG_DB="$PKG_ROOT/db"
+PKG_CACHE=/var/cache/pkg
+INDEX_SRC="$REPO/index.json"
+INDEX_CACHE="$PKG_CACHE/index.json"
+
+C_ACCENT='\033[38;5;120m'
+C_RED='\033[38;5;203m'
+C_YELLOW='\033[38;5;214m'
+C_DIM='\033[38;5;244m'
+C_OFF='\033[0m'
+
+die()  { printf "${C_RED}pkg: %s${C_OFF}\n" "$*" >&2; exit 1; }
+warn() { printf "${C_YELLOW}pkg: %s${C_OFF}\n" "$*" >&2; }
+info() { printf "${C_ACCENT}==>${C_OFF} %s\n" "$*"; }
+
+usage() {
+  cat <<EOF
+webOS package manager
+
+usage: pkg <command> [args]
+
+commands:
+  update                refresh the cached catalog from /var/repo
+  list                  list installed packages
+  list --available      list packages in the catalog
+  search <pattern>      grep names/descriptions
+  info <name>           show manifest entry
+  install <name>...     install one or more packages
+  remove <name>...      remove installed packages
+  help                  this text
+EOF
+}
+
+# Extract the single-line entry for a package name.
+pkg_entry() {
+  grep -oE "\"$1\"[[:space:]]*:[[:space:]]*\{[^}]*\}" "$INDEX_CACHE" 2>/dev/null | head -n1
+}
+
+# Given an entry string (from pkg_entry), pull a field value.
+entry_field() {
+  entry="$1"; key="$2"
+  case "$key" in
+    version|sha256|desc)
+      printf '%s' "$entry" | grep -oE "\"$key\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | sed -E "s/\"$key\"[[:space:]]*:[[:space:]]*\"([^\"]*)\"/\1/"
+      ;;
+    size)
+      printf '%s' "$entry" | grep -oE "\"size\"[[:space:]]*:[[:space:]]*[0-9]+" | sed -E 's/.*:[[:space:]]*([0-9]+)/\1/'
+      ;;
+    deps)
+      printf '%s' "$entry" | grep -oE "\"deps\"[[:space:]]*:[[:space:]]*\[[^]]*\]" | sed -E 's/.*\[(.*)\].*/\1/' | tr ',' ' ' | tr -d '"' | tr -s ' '
+      ;;
+  esac
+}
+
+pkg_field() {
+  entry=$(pkg_entry "$1")
+  [ -n "$entry" ] || return 1
+  entry_field "$entry" "$2"
+}
+
+pkg_exists() {
+  [ -n "$(pkg_entry "$1")" ]
+}
+
+is_installed() {
+  grep -q "^$1 " "$PKG_DB/installed.list" 2>/dev/null
+}
+
+require_index() {
+  [ -f "$INDEX_CACHE" ] || cmd_update
+  [ -f "$INDEX_CACHE" ] || die "no catalog available at $INDEX_SRC"
+}
+
+cmd_update() {
+  [ -f "$INDEX_SRC" ] || die "no repo at $REPO (not baked into initramfs?)"
+  mkdir -p "$PKG_CACHE"
+  cp "$INDEX_SRC" "$INDEX_CACHE"
+  info "catalog refreshed"
+}
+
+catalog_rows() {
+  # emit "name<TAB>version<TAB>desc" per package
+  require_index
+  grep -oE '"[a-zA-Z][a-zA-Z0-9_.-]*"[[:space:]]*:[[:space:]]*\{[^}]*\}' "$INDEX_CACHE" \
+    | grep -v '^"packages"' | while IFS= read -r entry; do
+      name=$(printf '%s' "$entry" | sed -E 's/^"([^"]+)".*/\1/')
+      [ "$name" = "packages" ] && continue
+      v=$(entry_field "$entry" version)
+      d=$(entry_field "$entry" desc)
+      printf '%s\t%s\t%s\n' "$name" "$v" "$d"
+    done
+}
+
+cmd_list() {
+  if [ "${1:-}" = "--available" ] || [ "${1:-}" = "-a" ]; then
+    catalog_rows | while IFS="$(printf '\t')" read -r n v d; do
+      printf "  %-16s %-10s %s\n" "$n" "$v" "$d"
+    done
+    return
+  fi
+  if [ ! -s "$PKG_DB/installed.list" ]; then
+    printf "  ${C_DIM}(no packages installed)${C_OFF}\n"
+    return
+  fi
+  while read -r n v; do
+    [ -z "$n" ] && continue
+    printf "  %-16s %s\n" "$n" "$v"
+  done < "$PKG_DB/installed.list"
+}
+
+cmd_search() {
+  pattern="${1:-}"
+  [ -z "$pattern" ] && die "usage: pkg search <pattern>"
+  catalog_rows | grep -i "$pattern" | while IFS="$(printf '\t')" read -r n v d; do
+    printf "  %-16s %-10s %s\n" "$n" "$v" "$d"
+  done
+}
+
+cmd_info() {
+  require_index
+  name="${1:-}"
+  [ -z "$name" ] && die "usage: pkg info <name>"
+  pkg_exists "$name" || die "unknown package: $name"
+  v=$(pkg_field "$name" version)
+  s=$(pkg_field "$name" size)
+  h=$(pkg_field "$name" sha256)
+  d=$(pkg_field "$name" desc)
+  dp=$(pkg_field "$name" deps || true)
+  printf "${C_ACCENT}%s${C_OFF}\n" "$name"
+  printf "  version : %s\n" "$v"
+  printf "  size    : %s bytes\n" "$s"
+  printf "  sha256  : %s\n" "$h"
+  printf "  desc    : %s\n" "$d"
+  if [ -n "$dp" ]; then
+    printf "  deps    :"
+    for dep in $dp; do printf " %s" "$dep"; done
+    printf "\n"
+  else
+    printf "  deps    : (none)\n"
+  fi
+  if is_installed "$name"; then
+    printf "  status  : ${C_ACCENT}installed${C_OFF}\n"
+  else
+    printf "  status  : not installed\n"
+  fi
+}
+
+install_one() {
+  local name="$1"
+  local version expected_sha deps dep tar_name src_tar dst_tar actual_sha
+  pkg_exists "$name" || die "unknown package: $name"
+  if is_installed "$name"; then
+    warn "$name already installed"
+    return 0
+  fi
+  version=$(pkg_field "$name" version)
+  expected_sha=$(pkg_field "$name" sha256)
+  deps=$(pkg_field "$name" deps || true)
+
+  for dep in $deps; do
+    if ! is_installed "$dep"; then
+      install_one "$dep"
+    fi
+  done
+
+  tar_name="${name}-${version}.tar.gz"
+  src_tar="$REPO/$name/$tar_name"
+  dst_tar="$PKG_CACHE/$tar_name"
+  [ -f "$src_tar" ] || die "tarball missing: $src_tar"
+
+  info "[1/4] fetch  $tar_name"
+  cp "$src_tar" "$dst_tar"
+
+  info "[2/4] verify sha256"
+  actual_sha=$(sha256sum "$dst_tar" | awk '{print $1}')
+  if [ "$actual_sha" != "$expected_sha" ]; then
+    rm -f "$dst_tar"
+    die "checksum mismatch for $name: expected $expected_sha got $actual_sha"
+  fi
+
+  info "[3/4] audit paths"
+  if tar -tzf "$dst_tar" | grep -qE '(^|/)\.\.($|/)'; then
+    rm -f "$dst_tar"
+    die "tarball contains .. traversal, refusing to install"
+  fi
+
+  info "[4/4] unpack to $PKG_ROOT"
+  tar -tzf "$dst_tar" | grep -v '/$' > "$PKG_DB/$name.files" || true
+  tar -xzf "$dst_tar" -C "$PKG_ROOT"
+
+  if [ -x "$PKG_ROOT/hook/postinstall" ]; then
+    info "postinstall"
+    "$PKG_ROOT/hook/postinstall" || warn "postinstall exited non-zero"
+    rm -f "$PKG_ROOT/hook/postinstall"
+  fi
+
+  printf "%s %s\n" "$name" "$version" >> "$PKG_DB/installed.list"
+  printf "${C_ACCENT}installed${C_OFF} %s-%s\n" "$name" "$version"
+}
+
+cmd_install() {
+  [ $# -ge 1 ] || die "usage: pkg install <name>..."
+  require_index
+  for name in "$@"; do install_one "$name"; done
+}
+
+remove_one() {
+  local name="$1"
+  local files rel target
+  if ! is_installed "$name"; then
+    warn "$name not installed"
+    return 0
+  fi
+  files="$PKG_DB/$name.files"
+  if [ -f "$files" ]; then
+    while IFS= read -r rel; do
+      [ -n "$rel" ] || continue
+      target="$PKG_ROOT/$rel"
+      if [ -L "$target" ] || [ -f "$target" ]; then
+        rm -f "$target"
+      fi
+    done < "$files"
+    find "$PKG_ROOT" -type d -empty -delete 2>/dev/null || true
+    rm -f "$files"
+  fi
+  grep -v "^$name " "$PKG_DB/installed.list" > "$PKG_DB/installed.list.tmp" || true
+  mv "$PKG_DB/installed.list.tmp" "$PKG_DB/installed.list"
+  printf "${C_ACCENT}removed${C_OFF}   %s\n" "$name"
+}
+
+cmd_remove() {
+  [ $# -ge 1 ] || die "usage: pkg remove <name>..."
+  for name in "$@"; do remove_one "$name"; done
+}
+
+main() {
+  mkdir -p "$PKG_DB" "$PKG_CACHE"
+  [ -f "$PKG_DB/installed.list" ] || : > "$PKG_DB/installed.list"
+
+  sub="${1:-help}"
+  shift || true
+  case "$sub" in
+    update)  cmd_update ;;
+    list|ls) cmd_list "$@" ;;
+    search)  cmd_search "$@" ;;
+    info)    cmd_info "$@" ;;
+    install|add) cmd_install "$@" ;;
+    remove|rm|uninstall) cmd_remove "$@" ;;
+    help|-h|--help) usage ;;
+    *) die "unknown command: $sub (try 'pkg help')" ;;
+  esac
+}
+
+main "$@"
