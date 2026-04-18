@@ -1,0 +1,83 @@
+name: Build and deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential bc bison flex libelf-dev libssl-dev \
+            gcc-multilib cpio xz-utils curl ca-certificates python3
+
+      - name: Cache kernel + busybox tarballs
+        uses: actions/cache@v4
+        with:
+          path: src/*.tar.*
+          key: tarballs-linux-6.6.63-busybox-1.36.1
+
+      - name: Cache kernel build tree
+        uses: actions/cache@v4
+        with:
+          path: src/linux-6.6.63
+          key: kernel-build-${{ hashFiles('build/kernel.fragment', 'build/init.sh', 'build/inittab', 'build/motd', 'build/profile') }}
+
+      - name: Cache busybox build tree
+        uses: actions/cache@v4
+        with:
+          path: src/busybox-1.36.1
+          key: busybox-build-${{ hashFiles('build/busybox.fragment') }}
+
+      - name: Fetch sources
+        run: make -C build fetch
+
+      - name: Build busybox
+        run: make -C build busybox
+
+      - name: Build kernel (bzImage)
+        run: make -C build kernel
+
+      - name: Fetch v86 + xterm.js
+        run: make -C build web
+
+      - name: Verify artifacts
+        run: |
+          ls -la web/images/ web/vendor/
+          file web/images/bzImage
+          test -s web/images/bzImage
+          test -s web/vendor/libv86.js
+          test -s web/vendor/v86.wasm
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

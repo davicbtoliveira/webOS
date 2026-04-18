@@ -27,9 +27,22 @@ INITRAMFS := $(BUILD)/initramfs
 
 NPROC := $(shell nproc)
 
-.PHONY: all fetch kernel busybox initramfs web clean distclean deps-check run
+.PHONY: all fetch kernel busybox initramfs web clean distclean deps-check run shim
 
 all: deps-check $(IMAGES)/bzImage $(WEB)/vendor/libv86.js $(WEB)/vendor/xterm.js
+
+shim: $(BUILD)/shim/i686-linux-gnu-ld $(BUILD)/shim/i686-linux-gnu-ar \
+      $(BUILD)/shim/i686-linux-gnu-strip $(BUILD)/shim/i686-linux-gnu-nm \
+      $(BUILD)/shim/i686-linux-gnu-objcopy $(BUILD)/shim/i686-linux-gnu-objdump \
+      $(BUILD)/shim/i686-linux-gnu-ranlib
+
+$(BUILD)/shim/i686-linux-gnu-%:
+	@mkdir -p $(BUILD)/shim
+	@if command -v i686-linux-gnu-$* >/dev/null 2>&1; then \
+		ln -sf "$$(command -v i686-linux-gnu-$*)" $@; \
+	else \
+		ln -sf "$$(command -v $*)" $@; \
+	fi
 
 deps-check:
 	@for t in gcc make bison flex bc curl xz; do \
@@ -77,7 +90,7 @@ $(BUSYBOX_DIR)/.config: $(BUILD)/busybox.fragment $(BUSYBOX_DIR)/Makefile
 	yes "" | $(MAKE) -C $(BUSYBOX_DIR) oldconfig >/dev/null
 	grep -q '^CONFIG_STATIC=y' $@ || { echo "CONFIG_STATIC not enabled"; exit 1; }
 
-$(BUSYBOX_DIR)/busybox: $(BUSYBOX_DIR)/.config
+$(BUSYBOX_DIR)/busybox: $(BUSYBOX_DIR)/.config shim
 	PATH=$(BUILD)/shim:$$PATH $(MAKE) -C $(BUSYBOX_DIR) -j$(NPROC) \
 		HOSTCC=gcc \
 		CROSS_COMPILE=i686-linux-gnu- \
@@ -119,7 +132,7 @@ $(BUILD)/shim/bc: $(INITRAMFS)/bin/busybox
 	ln -sf $(INITRAMFS)/bin/busybox $(BUILD)/shim/bc
 	@echo 'bc shim ready'
 
-$(KERNEL_DIR)/.config: $(BUILD)/kernel.fragment $(KERNEL_DIR)/Makefile $(BUILD)/shim/bc
+$(KERNEL_DIR)/.config: $(BUILD)/kernel.fragment $(KERNEL_DIR)/Makefile $(BUILD)/shim/bc shim
 	PATH=$(BUILD)/shim:$$PATH $(MAKE) -C $(KERNEL_DIR) ARCH=i386 CROSS_COMPILE=i686-linux-gnu- tinyconfig
 	cat $(BUILD)/kernel.fragment >> $@
 	@echo 'CONFIG_INITRAMFS_SOURCE="$(INITRAMFS)"' >> $@
