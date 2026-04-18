@@ -1,0 +1,3 @@
+version=1.73.35
+desc=Fast and efficient self-assembling x86 assembler for Linux
+deps=
