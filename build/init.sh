@@ -10,9 +10,23 @@ echo "[webOS] /init stage 1: mounting pseudo filesystems"
 
 /bin/busybox --install -s 2>/dev/null
 
+mkdir -p /tmp/packages/bin
+mkdir -p /tmp/packages/usr/bin
+mkdir -p /tmp/packages/usr/lib
+
+ln -sf /tmp/packages/bin /usr/local/bin 2>/dev/null || true
+ln -sf /tmp/packages/usr/lib /usr/local/lib 2>/dev/null || true
+
+export PATH="/tmp/packages/bin:/usr/local/bin:/bin:/sbin:/usr/bin:/usr/sbin"
+export LD_LIBRARY_PATH="/tmp/packages/usr/lib:/usr/local/lib:$LD_LIBRARY_PATH"
+
 echo "[webOS] /init stage 2: hostname + motd"
 hostname webOS
 [ -f /etc/motd ] && cat /etc/motd
+
+echo ""
+echo "Welcome to webOS!"
+echo "Type 'pkg help' for package management"
 
 echo "[webOS] /init stage 3: exec /sbin/init"
 exec /sbin/init

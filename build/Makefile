@@ -105,7 +105,7 @@ $(INITRAMFS)/bin/busybox: $(BUSYBOX_DIR)/busybox
 
 # ----- initramfs structure -----
 
-initramfs: $(INITRAMFS)/init $(INITRAMFS)/etc/inittab $(INITRAMFS)/etc/motd $(INITRAMFS)/etc/profile $(INITRAMFS)/bin/busybox
+initramfs: $(INITRAMFS)/init $(INITRAMFS)/etc/inittab $(INITRAMFS)/etc/motd $(INITRAMFS)/etc/profile $(INITRAMFS)/bin/busybox $(INITRAMFS)/bin/pkg $(INITRAMFS)/etc/packages.json
 
 $(INITRAMFS)/init: $(BUILD)/init.sh
 	@mkdir -p $(INITRAMFS)
@@ -122,6 +122,14 @@ $(INITRAMFS)/etc/motd: $(BUILD)/motd
 $(INITRAMFS)/etc/profile: $(BUILD)/profile
 	@mkdir -p $(INITRAMFS)/etc
 	install -m 644 $(BUILD)/profile $@
+
+$(INITRAMFS)/bin/pkg: $(BUILD)/pkg
+	@mkdir -p $(INITRAMFS)/bin
+	install -m 755 $(BUILD)/pkg $@
+
+$(INITRAMFS)/etc/packages.json: $(BUILD)/packages.json
+	@mkdir -p $(INITRAMFS)/etc
+	install -m 644 $(BUILD)/packages.json $@
 
 # ----- kernel -----
 

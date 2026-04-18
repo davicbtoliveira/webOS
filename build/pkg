@@ -1,0 +1,143 @@
+#!/bin/sh
+PKG_DIR="/tmp/packages"
+
+export PATH="/tmp/packages/bin:/usr/local/bin:$PATH"
+export LD_LIBRARY_PATH="/tmp/packages/usr/lib:/usr/local/lib:$LD_LIBRARY_PATH"
+
+if [ ! -d "$PKG_DIR/bin" ]; then
+    mkdir -p "$PKG_DIR/bin"
+    mkdir -p "$PKG_DIR/usr/bin"
+    mkdir -p "$PKG_DIR/usr/lib"
+fi
+
+cmd="$1"
+
+case "$cmd" in
+    -h|--help|help)
+        echo "webOS Package Manager"
+        echo ""
+        echo "Usage: pkg <command> [options]"
+        echo ""
+        echo "Commands:"
+        echo "  list              Show available packages"
+        echo "  installed        Show installed packages"
+        echo "  install <name>   Install a package"
+        echo "  remove <name>   Remove a package"
+        echo "  update          Update package list from remote"
+        echo ""
+        ;;
+    list)
+        echo "Available packages:"
+        echo "  fastfetch  - Fast fetch system information tool"
+        echo "  htop      - Interactive process viewer"
+        echo "  neofetch  - System information fetch tool (ASCII art)"
+        ;;
+    installed)
+        echo "Installed packages:"
+        if [ -d "$PKG_DIR/bin" ]; then
+            found=0
+            for f in "$PKG_DIR/bin/"*; do
+                if [ -f "$f" ]; then
+                    printf "  %s\n" "$(basename "$f")"
+                    found=1
+                fi
+            done
+            [ "$found" -eq 0 ] && printf "  (none)\n"
+        else
+            printf "  (none)\n"
+        fi
+        ;;
+    install)
+        pkg_name="$2"
+        if [ -z "$pkg_name" ]; then
+            echo "Usage: pkg install <package-name>"
+            exit 1
+        fi
+
+        if [ -f "$PKG_DIR/bin/$pkg_name" ]; then
+            echo "$pkg_name already installed"
+            exit 0
+        fi
+
+        case "$pkg_name" in
+            fastfetch)
+                ARCH="$(uname -m)"
+                URL="https://github.com/fastfetch-cli/fastfetch/releases/download/2.43.0/fastfetch-${ARCH}-unknown-linux-musl.tar.gz"
+                if [ "$ARCH" != "x86_64" ]; then
+                    URL="https://github.com/fastfetch-cli/fastfetch/releases/download/2.43.0/fastfetch-x86_64-unknown-linux-musl.tar.gz"
+                fi
+                echo "Installing fastfetch..."
+                mkdir -p /tmp/dl
+                wget -q -O /tmp/dl/fastfetch.tar.gz "$URL" && tar -xzf /tmp/dl/fastfetch.tar.gz -C /tmp/dl
+                if [ -f "/tmp/dl/fastfetch" ]; then
+                    cp /tmp/dl/fastfetch "$PKG_DIR/bin/"
+                    chmod +x "$PKG_DIR/bin/fastfetch"
+                    echo "Installed fastfetch"
+                elif [ -f "/tmp/dl/fastfetch-${ARCH}/fastfetch" ]; then
+                    cp "/tmp/dl/fastfetch-${ARCH}/fastfetch" "$PKG_DIR/bin/"
+                    chmod +x "$PKG_DIR/bin/fastfetch"
+                    echo "Installed fastfetch"
+                else
+                    echo "Failed to extract fastfetch"
+                    rm -rf /tmp/dl
+                    exit 1
+                fi
+                rm -rf /tmp/dl
+                ;;
+            htop)
+                echo "Installing htop..."
+                mkdir -p /tmp/dl
+                wget -q -O /tmp/dl/htop.tar.gz "https://github.com/htop-dev/htop/releases/download/3.3.0/htop-3.3.0.tar.gz"
+                tar -xzf /tmp/dl/htop.tar.gz -C /tmp/dl
+                if [ -f "/tmp/dl/htop-3.3.0/htop" ]; then
+                    cp "/tmp/dl/htop-3.3.0/htop" "$PKG_DIR/bin/"
+                    chmod +x "$PKG_DIR/bin/htop"
+                    echo "Installed htop"
+                else
+                    echo "Failed to extract htop"
+                    rm -rf /tmp/dl
+                    exit 1
+                fi
+                rm -rf /tmp/dl
+                ;;
+            neofetch)
+                echo "Installing neofetch..."
+                mkdir -p /tmp/dl
+                wget -q -O /tmp/dl/neofetch.tar.gz "https://github.com/dylanaraps/neofetch/releases/download/7.1.0/neofetch-7.1.0.tar.gz"
+                tar -xzf /tmp/dl/neofetch.tar.gz -C /tmp/dl
+                if [ -f "/tmp/dl/neofetch-7.1.0/neofetch" ]; then
+                    cp "/tmp/dl/neofetch-7.1.0/neofetch" "$PKG_DIR/bin/"
+                    chmod +x "$PKG_DIR/bin/neofetch"
+                    echo "Installed neofetch"
+                else
+                    echo "Failed to extract neofetch"
+                    rm -rf /tmp/dl
+                    exit 1
+                fi
+                rm -rf /tmp/dl
+                ;;
+            *)
+                echo "Package '$pkg_name' not found"
+                echo "Available: fastfetch, htop, neofetch"
+                exit 1
+                ;;
+        esac
+        ;;
+    remove)
+        pkg_name="$2"
+        if [ -n "$pkg_name" ] && [ -f "$PKG_DIR/bin/$pkg_name" ]; then
+            rm -f "$PKG_DIR/bin/$pkg_name"
+            echo "Removed $pkg_name"
+        else
+            echo "Package not installed"
+        fi
+        ;;
+    update)
+        echo "Using built-in package list"
+        ;;
+    *)
+        echo "webOS Package Manager"
+        echo "Usage: pkg <command>"
+        echo "Run 'pkg help' for usage"
+        ;;
+esac
