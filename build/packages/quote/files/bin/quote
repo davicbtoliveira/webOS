@@ -1,0 +1,14 @@
+#!/bin/sh
+quotes="
+Talk is cheap. Show me the code. — Linus Torvalds
+Premature optimization is the root of all evil. — Donald Knuth
+Simplicity is prerequisite for reliability. — Edsger Dijkstra
+Any fool can write code that a computer can understand. — Martin Fowler
+The best way to predict the future is to invent it. — Alan Kay
+First, solve the problem. Then, write the code. — John Johnson
+Make it work, make it right, make it fast. — Kent Beck
+Walking on water and developing software from a specification are easy if both are frozen. — Edward V Berard
+"
+count=$(printf '%s' "$quotes" | grep -c .)
+n=$(( (RANDOM % count) + 1 ))
+printf '%s' "$quotes" | sed -n "${n}p"

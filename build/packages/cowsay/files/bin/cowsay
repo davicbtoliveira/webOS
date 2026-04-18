@@ -1,0 +1,21 @@
+#!/bin/sh
+msg="$*"
+[ -z "$msg" ] && msg="$(cat)"
+len=${#msg}
+i=0
+bar=""
+while [ $i -lt $((len + 2)) ]; do bar="${bar}_"; i=$((i + 1)); done
+
+printf ' %s\n' "$bar"
+printf '< %s >\n' "$msg"
+bar=""
+i=0
+while [ $i -lt $((len + 2)) ]; do bar="${bar}-"; i=$((i + 1)); done
+printf ' %s\n' "$bar"
+cat <<'EOF'
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+EOF

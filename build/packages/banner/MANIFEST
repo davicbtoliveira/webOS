@@ -1,0 +1,3 @@
+version=1.0
+desc=Large ASCII text banner (figlet-style, tiny font)
+deps=

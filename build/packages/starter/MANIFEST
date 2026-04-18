@@ -1,0 +1,3 @@
+version=1.0
+desc=Meta-package: hello + cowsay + banner
+deps=hello cowsay banner

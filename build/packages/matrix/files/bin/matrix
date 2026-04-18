@@ -1,0 +1,26 @@
+#!/bin/sh
+# tiny matrix-like rain. works on any ANSI tty.
+trap 'printf "\033[?25h\033[0m\033[2J\033[H"; exit 0' INT TERM
+
+cols=${COLUMNS:-80}
+rows=${LINES:-24}
+[ -z "$cols" ] || [ "$cols" -lt 10 ] && cols=80
+[ -z "$rows" ] || [ "$rows" -lt 5 ] && rows=24
+
+printf '\033[?25l\033[2J'
+
+i=0
+while :; do
+  x=$(( (RANDOM % cols) + 1 ))
+  y=$(( (RANDOM % rows) + 1 ))
+  ch=$(awk -v n=$((RANDOM % 94 + 33)) 'BEGIN{printf "%c", n}')
+  case $((i % 12)) in
+    0|1|2) color=46 ;;    # bright green
+    3|4|5|6|7) color=34 ;; # dim green
+    *) color=40 ;;
+  esac
+  printf '\033[%d;%dH\033[38;5;%dm%s' "$y" "$x" "$color" "$ch"
+  i=$((i + 1))
+  [ $((i % 50)) -eq 0 ] && sleep 0.02 2>/dev/null || true
+  [ $i -gt 100000 ] && i=0
+done

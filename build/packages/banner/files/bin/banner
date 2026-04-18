@@ -1,0 +1,44 @@
+#!/bin/sh
+# block-letter banner using 3x3 glyphs
+msg="$*"
+[ -z "$msg" ] && { echo "usage: banner <text>" >&2; exit 1; }
+msg=$(printf '%s' "$msg" | tr 'a-z' 'A-Z')
+
+row_A_1="  A  "; row_A_2=" A A "; row_A_3=" AAA "
+row_B_1=" BB  "; row_B_2=" BB  "; row_B_3=" BBB "
+row_C_1=" CCC "; row_C_2="C    "; row_C_3=" CCC "
+row_D_1=" DD  "; row_D_2=" D D "; row_D_3=" DD  "
+row_E_1="EEEE "; row_E_2="EE   "; row_E_3="EEEE "
+row_F_1="FFFF "; row_F_2="FF   "; row_F_3="F    "
+row_G_1=" GGG "; row_G_2="G GG "; row_G_3=" GG  "
+row_H_1="H  H "; row_H_2="HHHH "; row_H_3="H  H "
+row_I_1=" III "; row_I_2="  I  "; row_I_3=" III "
+row_J_1="  JJJ"; row_J_2="  J  "; row_J_3="JJJ  "
+row_K_1="K  K "; row_K_2="KKK  "; row_K_3="K  K "
+row_L_1="L    "; row_L_2="L    "; row_L_3="LLLL "
+row_M_1="M   M"; row_M_2="MM MM"; row_M_3="M M M"
+row_N_1="N  N "; row_N_2="NN N "; row_N_3="N NN "
+row_O_1=" OO  "; row_O_2="O  O "; row_O_3=" OO  "
+row_P_1="PPP  "; row_P_2="PPP  "; row_P_3="P    "
+row_Q_1=" QQ  "; row_Q_2="Q  Q "; row_Q_3=" QQQ "
+row_R_1="RRR  "; row_R_2="RR   "; row_R_3="R  R "
+row_S_1=" SSS "; row_S_2="  S  "; row_S_3="SSS  "
+row_T_1="TTTTT"; row_T_2="  T  "; row_T_3="  T  "
+row_U_1="U  U "; row_U_2="U  U "; row_U_3=" UU  "
+row_V_1="V  V "; row_V_2="V  V "; row_V_3=" VV  "
+row_W_1="W   W"; row_W_2="W W W"; row_W_3=" W W "
+row_X_1="X  X "; row_X_2=" XX  "; row_X_3="X  X "
+row_Y_1="Y  Y "; row_Y_2=" YY  "; row_Y_3="  Y  "
+row_Z_1="ZZZZ "; row_Z_2="  Z  "; row_Z_3="ZZZZ "
+row_sp_1="   "; row_sp_2="   "; row_sp_3="   "
+
+for r in 1 2 3; do
+  i=1
+  while [ $i -le ${#msg} ]; do
+    c=$(printf '%s' "$msg" | cut -c$i)
+    if [ "$c" = " " ]; then c=sp; fi
+    eval "printf '%s  ' \"\$row_${c}_${r}\""
+    i=$((i + 1))
+  done
+  echo ""
+done

@@ -1,0 +1,3 @@
+version=0.1
+desc=Meta package: installs banner (figlet-lite alias)
+deps=banner
