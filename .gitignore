@@ -7,6 +7,8 @@ build/initramfs/
 build/initramfs.list
 build/repo/
 build/shim/*
+plan.md
+research.md
 !build/shim/i686-linux-gnu-gcc
 *.tar.xz
 *.tar.bz2
