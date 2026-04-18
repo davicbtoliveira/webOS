@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>webOS — Linux in the browser</title>
+<link rel="stylesheet" href="vendor/xterm.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>webOS</h1>
+    <span id="status" class="status booting">booting…</span>
+  </header>
+
+  <main>
+    <div id="terminal"></div>
+  </main>
+
+  <footer>
+    <kbd>Ctrl+L</kbd> clear &middot;
+    <button id="reset">reset</button>
+    <button id="halt">halt</button>
+    <span id="meta"></span>
+  </footer>
+
+  <script src="vendor/xterm.js"></script>
+  <script src="vendor/xterm-addon-fit.js"></script>
+  <script src="vendor/libv86.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

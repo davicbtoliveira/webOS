@@ -1,0 +1,121 @@
+:root {
+  --bg: #0b0f0a;
+  --fg: #b8e0a0;
+  --accent: #7cff7c;
+  --muted: #5a7a5a;
+  --warn: #ffb86b;
+  --err: #ff6b6b;
+  --border: #1e2a1e;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+  font-size: 14px;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: #050805;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.status {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--muted);
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.status.booting { color: var(--warn); border-color: var(--warn); }
+.status.running { color: var(--accent); border-color: var(--accent); }
+.status.halted  { color: var(--err); border-color: var(--err); }
+
+main {
+  flex: 1;
+  min-height: 0;
+  padding: 0.5rem;
+}
+
+#terminal {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border);
+  padding: 0.4rem;
+  background: #000;
+}
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 1rem;
+  border-top: 1px solid var(--border);
+  background: #050805;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+footer kbd {
+  background: #1a241a;
+  color: var(--fg);
+  padding: 0.05rem 0.35rem;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  font-size: 0.7rem;
+}
+
+footer button {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--border);
+  padding: 0.2rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+footer button:hover {
+  background: var(--border);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+#meta {
+  margin-left: auto;
+}
+
+.xterm { height: 100% !important; }
+.xterm-viewport { background: #000 !important; }
+
+@media (max-width: 600px) {
+  header h1 { font-size: 0.85rem; }
+  body { font-size: 12px; }
+}
