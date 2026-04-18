@@ -1,0 +1,7 @@
+::sysinit:/bin/cat /etc/motd
+::sysinit:/bin/hostname webOS
+
+ttyS0::respawn:-/bin/sh
+
+::ctrlaltdel:/sbin/reboot
+::shutdown:/bin/umount -a -r
