@@ -5,6 +5,7 @@ web/images/*
 !web/images/.gitkeep
 web/vendor/
 build/initramfs/
+build/initramfs.list
 build/shim/*
 !build/shim/i686-linux-gnu-gcc
 *.tar.xz

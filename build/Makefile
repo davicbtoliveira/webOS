@@ -132,13 +132,18 @@ $(BUILD)/shim/bc: $(INITRAMFS)/bin/busybox
 	ln -sf $(INITRAMFS)/bin/busybox $(BUILD)/shim/bc
 	@echo 'bc shim ready'
 
-$(KERNEL_DIR)/.config: $(BUILD)/kernel.fragment $(KERNEL_DIR)/Makefile $(BUILD)/shim/bc shim
+$(BUILD)/initramfs.list: $(BUILD)/initramfs.list.in
+	sed 's|@INITRAMFS@|$(INITRAMFS)|g' $< > $@
+
+$(KERNEL_DIR)/.config: $(BUILD)/kernel.fragment $(KERNEL_DIR)/Makefile $(BUILD)/shim/bc shim $(BUILD)/initramfs.list
 	PATH=$(BUILD)/shim:$$PATH $(MAKE) -C $(KERNEL_DIR) ARCH=i386 CROSS_COMPILE=i686-linux-gnu- tinyconfig
 	cat $(BUILD)/kernel.fragment >> $@
-	@echo 'CONFIG_INITRAMFS_SOURCE="$(INITRAMFS)"' >> $@
+	@echo 'CONFIG_INITRAMFS_SOURCE="$(BUILD)/initramfs.list"' >> $@
+	@echo 'CONFIG_INITRAMFS_ROOT_UID=0' >> $@
+	@echo 'CONFIG_INITRAMFS_ROOT_GID=0' >> $@
 	PATH=$(BUILD)/shim:$$PATH $(MAKE) -C $(KERNEL_DIR) ARCH=i386 CROSS_COMPILE=i686-linux-gnu- olddefconfig
 
-$(KERNEL_DIR)/arch/x86/boot/bzImage: $(KERNEL_DIR)/.config initramfs
+$(KERNEL_DIR)/arch/x86/boot/bzImage: $(KERNEL_DIR)/.config initramfs $(BUILD)/initramfs.list
 	PATH=$(BUILD)/shim:$$PATH $(MAKE) -C $(KERNEL_DIR) -j$(NPROC) ARCH=i386 \
 		KBUILD_BUILD_USER=webos KBUILD_BUILD_HOST=builder \
 		KBUILD_BUILD_TIMESTAMP="$$(date -u '+%Y-%m-%d %H:%M UTC')" \
