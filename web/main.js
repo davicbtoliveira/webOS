@@ -65,7 +65,7 @@
     META_EL.textContent = text;
   };
 
-  if (typeof V86 === "undefined" && typeof V86Starter === "undefined") {
+  if (typeof V86 === "undefined") {
     term.write(
       "\x1b[31mfatal\x1b[0m: libv86 not loaded. check vendor/libv86.js\r\n",
     );
@@ -73,9 +73,7 @@
     return;
   }
 
-  const V86Ctor = typeof V86 !== "undefined" ? V86 : V86Starter;
-
-  const emulator = new V86Ctor({
+  const emulator = new V86({
     wasm_path: "vendor/v86.wasm",
     memory_size: 64 * 1024 * 1024,
     vga_memory_size: 2 * 1024 * 1024,

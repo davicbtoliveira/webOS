@@ -17,7 +17,6 @@ XTERM_FIT := https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-
 ROOT := $(abspath $(CURDIR)/..)
 BUILD := $(ROOT)/build
 SRC := $(ROOT)/src
-DIST := $(ROOT)/dist
 WEB := $(ROOT)/web
 IMAGES := $(WEB)/images
 
@@ -166,8 +165,7 @@ $(KERNEL_DIR)/arch/x86/boot/bzImage: $(KERNEL_DIR)/.config initramfs $(BUILD)/in
 		KCFLAGS="-std=gnu11 -Wno-error" bzImage
 
 $(IMAGES)/bzImage: $(KERNEL_DIR)/arch/x86/boot/bzImage
-	@mkdir -p $(IMAGES) $(DIST)
-	cp $< $(DIST)/bzImage
+	@mkdir -p $(IMAGES)
 	cp $< $@
 
 # ----- web vendor -----
@@ -191,7 +189,7 @@ $(WEB)/vendor/xterm.js:
 
 run:
 	@command -v qemu-system-i386 >/dev/null || { echo "install qemu-system-x86"; exit 1; }
-	qemu-system-i386 -kernel $(DIST)/bzImage -append "console=ttyS0 quiet" -nographic -no-reboot
+	qemu-system-i386 -kernel $(IMAGES)/bzImage -append "console=ttyS0 quiet" -nographic -no-reboot
 
 serve:
 	@echo "Open http://localhost:8000/"
@@ -205,6 +203,7 @@ clean:
 	-$(MAKE) -C $(BUSYBOX_DIR) clean 2>/dev/null || true
 
 distclean:
-	rm -rf $(SRC) $(DIST) $(INITRAMFS)/bin $(INITRAMFS)/sbin $(INITRAMFS)/usr $(INITRAMFS)/linuxrc
+	rm -rf $(SRC) $(INITRAMFS)/bin $(INITRAMFS)/sbin $(INITRAMFS)/usr $(INITRAMFS)/linuxrc $(REPO)
 	rm -f $(IMAGES)/bzImage $(IMAGES)/seabios.bin $(IMAGES)/vgabios.bin
+	rm -f $(BUILD)/initramfs.list
 	rm -rf $(WEB)/vendor

@@ -1,6 +1,5 @@
 .claude/
 src/
-dist/
 web/images/*
 !web/images/.gitkeep
 web/vendor/

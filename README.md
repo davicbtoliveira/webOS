@@ -23,7 +23,6 @@ webOS/
 │   ├── repo/                  # generated: catalog + tarballs (baked into initramfs)
 │   └── tools/                 # build-repo.sh
 ├── src/                       # kernel + busybox sources (fetched)
-├── dist/                      # dist outputs (bzImage)
 ├── web/                       # static site
 │   ├── index.html
 │   ├── style.css
@@ -56,10 +55,10 @@ make -C build           # everything
 ```
 
 Outputs:
-- `dist/bzImage`, `web/images/bzImage`
-- `web/images/seabios.bin`, `web/images/vgabios.bin`
+- `web/images/bzImage`, `web/images/seabios.bin`, `web/images/vgabios.bin`
 - `web/vendor/libv86.js`, `web/vendor/v86.wasm`
 - `web/vendor/xterm.js`, `web/vendor/xterm.css`
+- `build/repo/` (package tarballs + index.json, baked into bzImage)
 
 ## Run
 
