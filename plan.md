@@ -410,8 +410,8 @@ Checkboxes follow the order a fresh contributor should attack them. Phases are g
 - [x] 10.1 README updated with "Using webOS" section.
 - [x] 10.2 README "Packaging" section added with `build/packages/<name>/` layout.
 - [x] 10.3 CONTRIBUTING.md skipped (low demand).
-- [ ] 10.4 Final push after commit.
-- [ ] 10.5 Commit.
+- [x] 10.4 Final push — commits `2d089be..b4154ce` on `origin/main`.
+- [x] 10.5 Commits landed: `chore` + 4 `feat` commits (pkg, fetch, repo, build wiring).
 
 ### Gating & verification rules
 
