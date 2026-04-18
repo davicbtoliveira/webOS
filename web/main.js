@@ -14,7 +14,7 @@
   };
 
   const KERNEL_CMDLINE =
-    "console=ttyS0 earlyprintk=ttyS0 quiet loglevel=3 TERM=xterm-256color";
+    "console=ttyS0 earlyprintk=serial,ttyS0,115200 ignore_loglevel tsc=reliable clocksource=pit";
 
   const term = new Terminal({
     fontFamily:
