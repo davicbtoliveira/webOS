@@ -1,0 +1,16 @@
+.claude/
+src/
+dist/
+web/images/*
+!web/images/.gitkeep
+web/vendor/
+build/initramfs/
+build/shim/*
+!build/shim/i686-linux-gnu-gcc
+*.tar.xz
+*.tar.bz2
+*.tar.gz
+*.cpio
+*.cpio.gz
+*.o
+*.a
