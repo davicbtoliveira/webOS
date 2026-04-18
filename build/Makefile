@@ -24,10 +24,13 @@ IMAGES := $(WEB)/images
 KERNEL_DIR := $(SRC)/linux-$(KERNEL_VERSION)
 BUSYBOX_DIR := $(SRC)/busybox-$(BUSYBOX_VERSION)
 INITRAMFS := $(BUILD)/initramfs
+ROOTFS := $(BUILD)/rootfs
+REPO := $(BUILD)/repo
+PKG_SRC := $(BUILD)/packages
 
 NPROC := $(shell nproc)
 
-.PHONY: all fetch kernel busybox initramfs web clean distclean deps-check run shim
+.PHONY: all fetch kernel busybox initramfs web clean distclean deps-check run shim repo
 
 all: deps-check $(IMAGES)/bzImage $(WEB)/vendor/libv86.js $(WEB)/vendor/xterm.js
 
@@ -105,7 +108,7 @@ $(INITRAMFS)/bin/busybox: $(BUSYBOX_DIR)/busybox
 
 # ----- initramfs structure -----
 
-initramfs: $(INITRAMFS)/init $(INITRAMFS)/etc/inittab $(INITRAMFS)/etc/motd $(INITRAMFS)/etc/profile $(INITRAMFS)/bin/busybox $(INITRAMFS)/bin/pkg $(INITRAMFS)/etc/packages.json
+initramfs: $(INITRAMFS)/init $(INITRAMFS)/etc/inittab $(INITRAMFS)/etc/motd $(INITRAMFS)/etc/profile $(INITRAMFS)/bin/busybox
 
 $(INITRAMFS)/init: $(BUILD)/init.sh
 	@mkdir -p $(INITRAMFS)
@@ -123,14 +126,6 @@ $(INITRAMFS)/etc/profile: $(BUILD)/profile
 	@mkdir -p $(INITRAMFS)/etc
 	install -m 644 $(BUILD)/profile $@
 
-$(INITRAMFS)/bin/pkg: $(BUILD)/pkg
-	@mkdir -p $(INITRAMFS)/bin
-	install -m 755 $(BUILD)/pkg $@
-
-$(INITRAMFS)/etc/packages.json: $(BUILD)/packages.json
-	@mkdir -p $(INITRAMFS)/etc
-	install -m 644 $(BUILD)/packages.json $@
-
 # ----- kernel -----
 
 kernel: $(IMAGES)/bzImage
@@ -140,8 +135,21 @@ $(BUILD)/shim/bc: $(INITRAMFS)/bin/busybox
 	ln -sf $(INITRAMFS)/bin/busybox $(BUILD)/shim/bc
 	@echo 'bc shim ready'
 
-$(BUILD)/initramfs.list: $(BUILD)/initramfs.list.in
-	sed 's|@INITRAMFS@|$(INITRAMFS)|g' $< > $@
+$(BUILD)/initramfs.list: $(BUILD)/initramfs.list.in repo $(ROOTFS)/bin/pkg $(ROOTFS)/bin/fetch $(ROOTFS)/etc/os-release
+	sed -e 's|@INITRAMFS@|$(INITRAMFS)|g' -e 's|@ROOTFS@|$(ROOTFS)|g' -e 's|@REPO@|$(REPO)|g' $< > $@
+	@# Append the repo tree as dir + file entries (gen_init_cpio doesn't recurse).
+	@printf '\n# --- generated: /var/repo from build/repo/ ---\n' >> $@
+	@printf 'dir     /var/repo       0755 0 0\n' >> $@
+	@find $(REPO) -mindepth 1 -type d | \
+		sed -e 's|^$(REPO)|/var/repo|' -e 's|^|dir     |' -e 's|$$|       0755 0 0|' >> $@
+	@find $(REPO) -type f | \
+		awk -v prefix="$(REPO)" '{ path=$$0; sub(prefix, "/var/repo", path); printf "file    %-32s %s 0644 0 0\n", path, $$0 }' >> $@
+
+repo: $(PKG_SRC)
+	$(BUILD)/tools/build-repo.sh
+
+$(PKG_SRC):
+	@mkdir -p $(PKG_SRC)
 
 $(KERNEL_DIR)/.config: $(BUILD)/kernel.fragment $(KERNEL_DIR)/Makefile $(BUILD)/shim/bc shim $(BUILD)/initramfs.list
 	PATH=$(BUILD)/shim:$$PATH $(MAKE) -C $(KERNEL_DIR) ARCH=i386 CROSS_COMPILE=i686-linux-gnu- tinyconfig

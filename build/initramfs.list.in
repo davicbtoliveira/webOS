@@ -1,4 +1,4 @@
-# gen_init_cpio descriptor — expands @INITRAMFS@ at build time.
+# gen_init_cpio descriptor — @INITRAMFS@ / @ROOTFS@ / @REPO@ expand at build time.
 # Creates device nodes so /dev/console exists before devtmpfs mounts.
 
 dir     /dev            0755 0 0
@@ -21,12 +21,17 @@ dir     /sbin           0755 0 0
 dir     /usr            0755 0 0
 dir     /usr/bin        0755 0 0
 dir     /usr/sbin       0755 0 0
+dir     /var            0755 0 0
+dir     /var/cache      0755 0 0
 
 file    /init               @INITRAMFS@/init             0755 0 0
 file    /etc/inittab        @INITRAMFS@/etc/inittab      0644 0 0
 file    /etc/motd           @INITRAMFS@/etc/motd         0644 0 0
 file    /etc/profile        @INITRAMFS@/etc/profile      0644 0 0
+file    /etc/os-release     @ROOTFS@/etc/os-release      0644 0 0
 file    /bin/busybox        @INITRAMFS@/bin/busybox      0755 0 0
+file    /bin/pkg            @ROOTFS@/bin/pkg             0755 0 0
+file    /bin/fetch          @ROOTFS@/bin/fetch           0755 0 0
 
 # busybox applet symlinks
 slink   /bin/sh             /bin/busybox 0777 0 0
@@ -70,6 +75,22 @@ slink   /bin/df             /bin/busybox 0777 0 0
 slink   /bin/du             /bin/busybox 0777 0 0
 slink   /bin/more           /bin/busybox 0777 0 0
 slink   /bin/which          /bin/busybox 0777 0 0
+slink   /bin/tar            /bin/busybox 0777 0 0
+slink   /bin/gunzip         /bin/busybox 0777 0 0
+slink   /bin/gzip           /bin/busybox 0777 0 0
+slink   /bin/sha256sum      /bin/busybox 0777 0 0
+slink   /bin/xargs          /bin/busybox 0777 0 0
+slink   /bin/basename       /bin/busybox 0777 0 0
+slink   /bin/dirname        /bin/busybox 0777 0 0
+slink   /bin/printf         /bin/busybox 0777 0 0
+slink   /bin/expr           /bin/busybox 0777 0 0
+slink   /bin/true           /bin/busybox 0777 0 0
+slink   /bin/false          /bin/busybox 0777 0 0
+slink   /bin/test           /bin/busybox 0777 0 0
+slink   /bin/stat           /bin/busybox 0777 0 0
+slink   /bin/free           /bin/busybox 0777 0 0
+slink   /bin/uptime         /bin/busybox 0777 0 0
+slink   /bin/touch          /bin/busybox 0777 0 0
 
 slink   /sbin/init          /bin/busybox 0777 0 0
 slink   /sbin/reboot        /bin/busybox 0777 0 0

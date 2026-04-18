@@ -13,8 +13,14 @@
     kernel: "images/bzImage",
   };
 
+  const browserTag = (() => {
+    const ua = (navigator.userAgent || "").slice(0, 96);
+    return btoa(unescape(encodeURIComponent(ua))).replace(/=+$/, "");
+  })();
+
   const KERNEL_CMDLINE =
-    "console=ttyS0 earlyprintk=serial,ttyS0,115200 ignore_loglevel tsc=reliable clocksource=pit";
+    "console=ttyS0 earlyprintk=serial,ttyS0,115200 ignore_loglevel tsc=reliable clocksource=pit" +
+    " webos.browser=" + browserTag;
 
   const term = new Terminal({
     fontFamily:

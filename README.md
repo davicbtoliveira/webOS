@@ -11,15 +11,25 @@ Minimal Linux distro built from scratch, running in the browser via [v86](https:
 
 ```
 webOS/
-├── build/          # Makefile, configs, init scripts
-├── src/            # kernel + busybox sources (fetched)
-├── dist/           # build outputs (bzImage)
-├── web/            # static site
+├── build/
+│   ├── Makefile               # orchestrator
+│   ├── kernel.fragment        # kernel .config deltas
+│   ├── busybox.fragment       # busybox .config deltas
+│   ├── initramfs.list.in      # gen_init_cpio descriptor template
+│   ├── init.sh                # /init (stage 1 mounts + exec /sbin/init)
+│   ├── inittab, profile, motd
+│   ├── packages/              # package source tree (MANIFEST + files/)
+│   ├── rootfs/                # hand-written guest scripts (/bin/pkg, /bin/fetch)
+│   ├── repo/                  # generated: catalog + tarballs (baked into initramfs)
+│   └── tools/                 # build-repo.sh
+├── src/                       # kernel + busybox sources (fetched)
+├── dist/                      # dist outputs (bzImage)
+├── web/                       # static site
 │   ├── index.html
 │   ├── style.css
 │   ├── main.js
-│   ├── vendor/     # libv86.js, xterm.js (fetched)
-│   └── images/     # bzImage, seabios.bin, vgabios.bin (published)
+│   ├── vendor/                # libv86.js, xterm.js (fetched)
+│   └── images/                # bzImage, seabios.bin, vgabios.bin (published)
 └── README.md
 ```
 
@@ -72,12 +82,49 @@ v86 requires a real HTTP origin — opening `index.html` as `file://` will break
 
 ## Boot flow
 
-1. v86 loads `seabios.bin`, jumps to `bzImage` with `cmdline=console=ttyS0`.
-2. Kernel unpacks initramfs into rootfs.
+1. v86 loads `seabios.bin`, jumps to `bzImage` with `cmdline=console=ttyS0 …`.
+2. Kernel unpacks initramfs into rootfs (device nodes + `/bin/busybox` + `/bin/pkg` + `/bin/fetch` + `/var/repo/`).
 3. Kernel execs `/init`.
-4. `/init` mounts `/proc`, `/sys`, `/dev`, `/tmp`, prints MOTD, execs `/bin/sh`.
-5. Serial output piped to xterm.js via `emulator.serial0_output_byte`.
-6. xterm keystrokes piped to emulator via `emulator.serial0_send`.
+4. `/init` mounts `/proc`, `/sys`, `/dev`, `/tmp`, `/run`; creates `/tmp/packages/…` skeleton; prints MOTD; `exec /sbin/init`.
+5. `/sbin/init` reads `/etc/inittab`, respawns `/bin/sh` on ttyS0.
+6. Serial I/O bridged to xterm.js via `serial0-output-byte` / `serial0_send`.
+
+## Using webOS
+
+Once the shell prompts:
+
+```
+fetch                      # ASCII info card (os/kernel/uptime/cpu/ram/browser)
+fetch -L tux               # swap logo
+pkg help                   # package commands
+pkg list --available       # catalog
+pkg install hello          # unpacks into /tmp/packages/ (on PATH)
+hello you                  # run it
+pkg install starter        # installs hello + cowsay + banner together
+pkg remove cowsay
+pkg info banner
+```
+
+Everything installed under `/tmp/packages/` lives in tmpfs and is **wiped on browser reload** — every session starts clean. That's by design.
+
+## Packaging
+
+To add a package, create `build/packages/<name>/`:
+
+```
+build/packages/<name>/
+├── MANIFEST              # version=, desc=, deps=
+└── files/                # tree to tar and extract into /tmp/packages/
+    ├── bin/<exe>
+    └── share/<name>/…
+```
+
+Rebuild the kernel (repo is baked into initramfs):
+
+```
+make -C build repo        # rebuild build/repo/ (index + tarballs + sha256)
+make -C build kernel      # embed in bzImage
+```
 
 ## Licenses
 
