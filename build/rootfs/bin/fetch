@@ -1,0 +1,137 @@
+#!/bin/sh
+# fastfetch-style system info card for webOS.
+# usage: fetch [-L logo]   logo: webos (default), tux, none
+
+LOGO=webos
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -L|--logo) LOGO="$2"; shift 2 ;;
+    -h|--help)
+      printf "usage: fetch [-L webos|tux|none]\n"; exit 0 ;;
+    *) shift ;;
+  esac
+done
+
+if [ "${TERM:-dumb}" = "dumb" ] || [ -n "${NO_COLOR:-}" ]; then
+  C_ACC=""; C_KEY=""; C_OFF=""
+else
+  C_ACC="\033[38;5;120m"
+  C_KEY="\033[1;38;5;156m"
+  C_OFF="\033[0m"
+fi
+
+OS_NAME=$(. /etc/os-release 2>/dev/null; printf '%s' "${PRETTY_NAME:-webOS}")
+KERNEL=$(uname -srm 2>/dev/null)
+KERNEL_BUILD=$(uname -v 2>/dev/null)
+
+UPTIME_SEC=$(awk '{printf "%d", $1}' /proc/uptime 2>/dev/null || echo 0)
+UPTIME_H=$((UPTIME_SEC / 3600))
+UPTIME_M=$(((UPTIME_SEC % 3600) / 60))
+UPTIME_S=$((UPTIME_SEC % 60))
+if [ "$UPTIME_H" -gt 0 ]; then
+  UPTIME="${UPTIME_H}h ${UPTIME_M}m"
+elif [ "$UPTIME_M" -gt 0 ]; then
+  UPTIME="${UPTIME_M}m ${UPTIME_S}s"
+else
+  UPTIME="${UPTIME_S}s"
+fi
+
+SHELL_NAME="$(basename "${SHELL:-/bin/sh}")"
+BB_VER=$(/bin/busybox 2>&1 | head -n1 | awk '{print $2}')
+SHELL_FULL="$SHELL_NAME (busybox $BB_VER)"
+
+TERM_NAME="${TERM:-unknown}"
+
+CPU=$(grep -m1 '^model name' /proc/cpuinfo 2>/dev/null | sed 's/^model name[[:space:]]*:[[:space:]]*//')
+[ -z "$CPU" ] && CPU=$(grep -m1 '^cpu family' /proc/cpuinfo 2>/dev/null | sed 's/.*: //' | sed 's/^/i386 family /')
+[ -z "$CPU" ] && CPU="i686 (v86 emulated)"
+
+MEM_TOTAL=$(awk '/^MemTotal:/{printf "%d", $2/1024}' /proc/meminfo 2>/dev/null)
+MEM_AVAIL=$(awk '/^MemAvailable:/{printf "%d", $2/1024}' /proc/meminfo 2>/dev/null)
+[ -z "$MEM_AVAIL" ] && MEM_AVAIL=$(awk '/^MemFree:/{printf "%d", $2/1024}' /proc/meminfo 2>/dev/null)
+MEM_USED=$((MEM_TOTAL - MEM_AVAIL))
+MEM_LINE="${MEM_USED}MiB / ${MEM_TOTAL}MiB"
+
+PKG_COUNT=0
+if [ -f /tmp/packages/db/installed.list ]; then
+  PKG_COUNT=$(grep -c '^[a-zA-Z]' /tmp/packages/db/installed.list 2>/dev/null || echo 0)
+fi
+
+BROWSER_ENC=$(sed -n 's/.*webos\.browser=\([A-Za-z0-9+/=_-]*\).*/\1/p' /proc/cmdline 2>/dev/null)
+if [ -n "$BROWSER_ENC" ]; then
+  BROWSER=$(printf '%s' "$BROWSER_ENC" | /bin/busybox base64 -d 2>/dev/null | head -c 80)
+fi
+[ -z "$BROWSER" ] && BROWSER="(unknown)"
+
+DATE=$(date 2>/dev/null)
+
+HOST="v86 emulator in browser"
+USER_NAME="${USER:-root}"
+HOSTNAME_NOW=$(hostname 2>/dev/null || echo webOS)
+
+logo_webos() {
+  cat <<'EOF'
+   _       __     __    ____  _____
+  | |     / /__  / /_  / __ \/ ___/
+  | | /| / / _ \/ __ \/ / / /\__ \
+  | |/ |/ /  __/ /_/ / /_/ /___/ /
+  |__/|__/\___/_.___/\____//____/
+       linux in your browser
+EOF
+}
+
+logo_tux() {
+  cat <<'EOF'
+        .--.
+       |o_o |
+       |:_/ |
+      //   \ \
+     (|     | )
+    /'\_   _/`\
+    \___)=(___/
+EOF
+}
+
+LOGO_WIDTH=40
+print_logo() {
+  case "$LOGO" in
+    webos) logo_webos ;;
+    tux)   logo_tux ;;
+    none)  return ;;
+  esac
+}
+
+LOGO_OUT=$(print_logo)
+INFO=$(printf '%b\n' "${C_ACC}${USER_NAME}${C_OFF}@${C_ACC}${HOSTNAME_NOW}${C_OFF}
+${C_ACC}----------------${C_OFF}
+${C_KEY}OS${C_OFF}        ${OS_NAME}
+${C_KEY}Host${C_OFF}      ${HOST}
+${C_KEY}Kernel${C_OFF}    ${KERNEL}
+${C_KEY}Build${C_OFF}     ${KERNEL_BUILD}
+${C_KEY}Uptime${C_OFF}    ${UPTIME}
+${C_KEY}Packages${C_OFF}  ${PKG_COUNT}
+${C_KEY}Shell${C_OFF}     ${SHELL_FULL}
+${C_KEY}Terminal${C_OFF}  ${TERM_NAME}
+${C_KEY}CPU${C_OFF}       ${CPU}
+${C_KEY}Memory${C_OFF}    ${MEM_LINE}
+${C_KEY}Browser${C_OFF}   ${BROWSER}
+${C_KEY}Date${C_OFF}      ${DATE}")
+
+if [ "$LOGO" = "none" ]; then
+  printf '%b\n' "$INFO"
+  exit 0
+fi
+
+echo ""
+i=1
+logo_lines=$(printf '%s\n' "$LOGO_OUT" | wc -l)
+info_lines=$(printf '%s\n' "$INFO" | wc -l)
+max=$logo_lines
+[ "$info_lines" -gt "$max" ] && max=$info_lines
+while [ $i -le $max ]; do
+  lline=$(printf '%s\n' "$LOGO_OUT" | sed -n "${i}p")
+  iline=$(printf '%s\n' "$INFO" | sed -n "${i}p")
+  printf "${C_ACC}%-${LOGO_WIDTH}s${C_OFF}%b\n" "$lline" "$iline"
+  i=$((i + 1))
+done
+echo ""

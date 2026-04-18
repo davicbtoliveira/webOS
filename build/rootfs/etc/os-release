@@ -1,0 +1,6 @@
+NAME="webOS"
+PRETTY_NAME="webOS (vanilla linux in your browser)"
+ID=webos
+VERSION="0.1"
+VERSION_ID="0.1"
+HOME_URL="https://github.com/davicbtoliveira/webOS"
